@@ -7,16 +7,12 @@ Created on Thu Sep 21 15:42:48 2023
 
 from lxml import etree
 
-RefDates = ["20251217", "20250109", "20250121" #,"20240927"
+RefDates = ["20241217", "20250109", "20250121" #,"20240927"
             ]
 
 
 
-#RefDates = ["20231219", "20231220"]
 '''
-
-RefDates = []
-
 with open( r'D:\working\Reuters EIKON Messenger\dir.text', 'rt') as dirtext:
     for s in dirtext :
         RefDates.append( s.split()[0])
@@ -54,7 +50,7 @@ class User:
         self.dest_cnt += 1
         
     def setChk(self, bChk) :
-        self.bChk = True
+        self.bChk = bChk
         
     def setText(self, strText, Type = "Event"  ) :
         if self.bChk == False : return
@@ -71,7 +67,7 @@ class User:
     def Print(self) :
         if self.text_arr == "" :
             return
-        print( "write - name :" + self.user_name + "Date :" + self.RefDate + "Cnt: " + str(self.write_cnt) )
+        print( "write - name :" + self.user_name + " Date :" + self.RefDate + " Cnt: " + str(self.write_cnt) )
         
         self.write_cnt += 1
         write_op = "at"
@@ -102,22 +98,19 @@ for RefDate in RefDates :
         print(e)
         continue
     
-    
-    
     root = tree.getroot()
     
     chat_cnt = 0
     
-    #f2 = open(r'D:\working\rm\\' +  RefDate+ dest_user +'.txt', "wt", encoding='utf-8' )
-    #dest_chat_cnt = 0
-    #dest_chk = [ False for i in len(dest_users)  ]
     dest_cnt = [ 0 for i in range(len(dest_users))  ]
-    text_arr = [ "" for i in range(len(dest_users ))]
     
     users_array = []
     
     for user in dest_users :
         users_array.append( User(user, RefDate ) ) 
+        
+    SuperUser = User("", RefDate )
+    SuperUser.setChk(False)
         
     
     datas = root.getchildren()
@@ -133,10 +126,10 @@ for RefDate in RefDates :
                     for d3 in datas3 :
                         if d3.tag == "From" :
                             print("From : " + d3.text)
-                            #f1.write("From : " + d3.text+'\n')
+                            SuperUser.setText("From : " + d3.text + "\n")
                         elif d3.tag == "To" :
                             print("To : " + d3.text)
-                            #f1.write("To : " + d3.text+'\n')
+                            SuperUser.setText("To : " + d3.text + "\n")
         elif d.tag == "Users" :
             datas2 = d.getchildren()
     
@@ -144,26 +137,26 @@ for RefDate in RefDates :
                 if d2.tag == "UserInfo" :
                     datas3 = d2.getchildren()
     
+                    SuperUser.setText(d2.tag + "\n")
                     for d3 in datas3 :
-                        if d3.tag == "Email" :
+                        if d3.tag == "Email" :                            
                             try :
-                                if "@hanafn.com" in d3.text :
-                                    #f1.write ("Email : " + d3.text + '\n' )     
+                                SuperUser.setText(d3.text+"\n")
+                                if "@hanafn.com" in d3.text :                                    
                                     pass
-                            except :
+                            except :                                
                                 pass
         elif d.tag == "Chats" :
             
             chats = d.getchildren()
             
+            SuperUser.setText("\nChat Start" + "\n")
+            
             for chat in chats :
                 if chat.tag == "Chat" :
                     chat_cnt += 1
-                    #print(chat_cnt)
                     bChk = False
                     dest_chk = [ False for i in range(len(dest_users))  ]                                        
-                    
-                    #f1.write("\n[Chat " + str(chat_cnt) + ']\n')
                     
                     chat_childs = chat.getchildren() 
                     
@@ -171,26 +164,27 @@ for RefDate in RefDates :
                         if chat_child.tag == "Participants" :
                             users = chat_child.getchildren() 
                             
+                            SuperUser.setText(chat_child.tag + "\n")
+                            
                             for user in users :
                                 if user.tag == "User" :
-                                    #f1.write("참석자 : " + user.text + '\n')                                    
+                                    SuperUser.setText(user.text)
                                     for i in range(len(dest_users)) :
                                         if user.text == dest_users[i] + "@hanafn.com" :
-                                            #bChk = True
                                             dest_chk[i] = True                                            
                                             users_array[i].setChk(True)
                             
                         elif chat_child.tag == "Events" :
-                            #f1.write("채팅 시작 -------------\n")
+                            SuperUser.setText("\n[Chat "+ str(chat_cnt)+"채팅시작----\n" )
+                            
                             
                             for i in range(len(dest_users)) :
                                 if dest_chk[i] :
-                                    #dest_chat_cnt += 1
                                     dest_cnt[i] += 1
                                     
                                     users_array[i].addCount()
                                     
-                                    text_arr[i] += "\n[Chat " + str(dest_cnt[i]) + ']\n채팅 시작 ---------------\n'
+                                    #text_arr[i] += "\n[Chat " + str(dest_cnt[i]) + ']\n채팅 시작 ---------------\n'
                                     users_array[i].setText( "[Chat " , "Start" )
                                     
                             events = chat_child.getchildren()
@@ -201,47 +195,38 @@ for RefDate in RefDates :
                                 event_list = event_child.getchildren()
                                 
                                 for event in event_list:
+                                    
+                                    SuperUser.setText( event.tag + ": " )
+                                    if event.text :
+                                        SuperUser.setText( event.text + "\n" )
                                 
                                     if event.tag == "Type" :
-                                        #f1.write("[" + event.text + "] " )
-                                        for i in range(len(dest_users)) :
+                                        for i in range(len(dest_users)) :                                            
                                             if dest_chk[i] :
-                                                text_arr[i] += "[" + event.text + "] \n"                                                         
                                                 users_array[i].setText("[" + event.text + "] \n")
                                     elif event.tag == "User" :
-                                        #f1.write( "User " + event.text + " " )
                                         for i in range(len(dest_users)) :
                                             if dest_chk[i] :
-                                                text_arr[i] +=  "User " + event.text + " \n"                                                   
                                                 users_array[i].setText("User " + event.text + " \n" )
                                     elif event.tag == "UTCTime" :
-                                        #f1.write( "UTCTime " + event.text + "\n" )
                                         for i in range(len(dest_users)) :
                                             if dest_chk[i] :
-                                                text_arr[i] += "UTCTime " + event.text + "\n" 
                                                 users_array[i].setText("UTCTime " + event.text + "\n" )
                                     elif event.tag == "Message" :
                                         messages = event.getchildren()                                            
                                         
                                         for message in messages :                                                                                       
-                                            if message.tag == "Content" :
-                                                #f1.write( message.text )
+                                            if message.tag == "Content" :                                                
+                                                SuperUser.setText( message.text + "\n" )                                    
+
                                                 for i in range(len(dest_users)) :
                                                     if dest_chk[i] :
-                                                        #print(message)
-                                                        #text_arr[i] += message.text + "\n"                                                             
                                                         users_array[i].setText(message.text + "\n") 
-                                                        #with open(r'D:\working\rm\\'+ "debug.text" , "at",  encoding='utf-8' ) as f3 :
-                                                        #   f3.write(message.text)
-                                                        
-                                                    
                                 
                             
-                                
-                            #f1.write("채팅 끝 --------------\n")
+                            SuperUser.setText("채팅 끝 --------------\n" )    
                             for i in range(len(dest_users)) :
                                 if dest_chk[i] :
-                                    text_arr[i] += "채팅 끝 --------------\n"                       
                                     users_array[i].setText("채팅 끝 --------------\n"  ) 
                                             
                 
@@ -253,12 +238,12 @@ for RefDate in RefDates :
                 #f2.write(text_arr[i])
                 #pass
         users_array[i].Print()
-                
+
+    SuperUser.Print()                
     print(chat_cnt)
                         
+
 #%%
-for event in events :
-    print (event.tag)
-    print (event.text)
+print("end")    
     
     
